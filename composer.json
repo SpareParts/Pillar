@@ -1,0 +1,26 @@
+{
+  "name":        "spareparts/pillar",
+  "description": "Yet another take on ORM. This time with both hookers AND blackjack.",
+  "keywords":    ["orm", "model", "entity", "mysql", "database", "persistence"],
+  "license":     "MIT",
+  "require": {
+    "php":  ">=5.5.0",
+    "dibi/dibi": "~2",
+    "spareparts/enum": "^0.2",
+    "doctrine/annotations": "~1"
+  },
+  "require-dev": {
+	"phpunit/phpunit": "~4",
+	"mockery/mockery": "^0.9.6"
+  },
+  "autoload": {
+	"psr-4": {
+	  "SpareParts\\Pillar\\": "src"
+	}
+  },
+  "autoload-dev": {
+	"psr-4": {
+	  "SpareParts\\Pillar\\Test\\": "test"
+	}
+  }
+}
