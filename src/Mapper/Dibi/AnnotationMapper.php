@@ -78,7 +78,8 @@ class AnnotationMapper implements IMapper
 						$property->getName(),
 						$tableInfoList[$propertyAnnotation->getTable()],
 						$propertyAnnotation->isPrimary(),
-						$enabledForSelect
+						$enabledForSelect,
+						$propertyAnnotation->getCustomSelect()
 					);
 					// only first @column annotation should be used for selecting
 					// all following @column are there for saving/updating

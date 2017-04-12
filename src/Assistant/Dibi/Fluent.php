@@ -38,11 +38,15 @@ class Fluent extends \DibiFluent
 		foreach ($this->entityMapping->getTables() as $table) {
 			foreach ($this->entityMapping->getColumnsForTable($table->getIdentifier()) as $column) {
 				if (!isset($selectFieldList[$column->getPropertyName()])) {
-					$selectFieldList[$column->getPropertyName()] = sprintf(
-						'%s.%s',
-						$column->getTableInfo()->getIdentifier(),
-						$column->getColumnName()
-					);
+					if ($column->getCustomSelectSql()) {
+						$this->select($column->getCustomSelectSql())->as($column->getPropertyName());
+					} else {
+						$selectFieldList[$column->getPropertyName()] = sprintf(
+							'%s.%s',
+							$column->getTableInfo()->getIdentifier(),
+							$column->getColumnName()
+						);
+					}
 				}
 			}
 		}

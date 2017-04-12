@@ -30,19 +30,25 @@ class ColumnInfo
 	private $enabledForSelect = true;
 
 	/**
+	 * @var string\null
+	 */
+	private $customSelectSql;
+
+	/**
 	 * @param string $columnName
 	 * @param string $propertyName
 	 * @param TableInfo $tableInfo
 	 * @param bool $isPrimaryKey
 	 * @param bool $enabledForSelect
 	 */
-	public function __construct($columnName, $propertyName, TableInfo $tableInfo, $isPrimaryKey, $enabledForSelect)
+	public function __construct($columnName, $propertyName, TableInfo $tableInfo, $isPrimaryKey, $enabledForSelect, $customSelectSql = null)
 	{
 		$this->columnName = $columnName;
 		$this->propertyName = $propertyName;
 		$this->tableInfo = $tableInfo;
 		$this->isPrimaryKey = $isPrimaryKey;
 		$this->enabledForSelect = $enabledForSelect;
+		$this->customSelectSql = $customSelectSql;
 	}
 
 	/**
@@ -83,5 +89,13 @@ class ColumnInfo
 	public function isEnabledForSelect()
 	{
 		return $this->enabledForSelect;
+	}
+
+	/**
+	 * @return string\null
+	 */
+	public function getCustomSelectSql()
+	{
+		return $this->customSelectSql;
 	}
 }

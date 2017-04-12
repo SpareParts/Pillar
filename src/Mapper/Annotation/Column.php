@@ -22,6 +22,11 @@ class Column
 	protected $table;
 
 	/**
+	 * @var string|null
+	 */
+	protected $customSelect;
+
+	/**
 	 * @var bool
 	 */
 	protected $primary = false;
@@ -39,6 +44,9 @@ class Column
 		}
 		if (isset($values['primary'])) {
 			$this->primary = $values['primary'];
+		}
+		if (isset($values['customSelect'])) {
+			$this->customSelect = $values['customSelect'];
 		}
 	}
 
@@ -64,5 +72,13 @@ class Column
 	public function isPrimary()
 	{
 		return $this->primary;
+	}
+
+	/**
+	 * @return string|null
+	 */
+	public function getCustomSelect()
+	{
+		return $this->customSelect;
 	}
 }
