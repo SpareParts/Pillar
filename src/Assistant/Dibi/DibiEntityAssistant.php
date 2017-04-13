@@ -75,12 +75,13 @@ class DibiEntityAssistant
 		$mapping = $this->mapper->getEntityMapping($entity);
 		$tableInfos = $mapping->getTables();
 		if (!is_null($tables)) {
-			$tables = array_map(function ($tableName) use ($tableInfos, $entity) {
+			// grab TableInfo of given $tables
+			$tableInfos = array_map(function ($tableName) use ($tableInfos, $entity) {
 				if (!isset($tableInfos[$tableName])) {
 					throw new UnableToSaveException(sprintf('Unable to save entity: `%s`, unknown table `%s`', get_class($entity), $tableName));
 				}
 				return $tableInfos[$tableName];
-			}, $mapping->getTables());
+			}, $tables);
 		}
 
 		$affectedRows = 0;
