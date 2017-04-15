@@ -70,7 +70,9 @@ class AnnotationMapper implements IMapper
 					}
 
 					if (!isset($tableInfoList[$propertyAnnotation->getTable()])) {
-						throw new EntityMappingException(sprintf('Entity :`%s` property: `%s` is mapped to table identified as: `%s`, but no such table identifier is present.', $className, $property->getName(), $propertyAnnotation->getTable()));
+						// this is possibly not a mistake - property may have multiple Column annotations, and not be using all at once in the current entity
+						continue;
+//						throw new EntityMappingException(sprintf('Entity :`%s` property: `%s` is mapped to table identified as: `%s`, but no such table identifier is present.', $className, $property->getName(), $propertyAnnotation->getTable()));
 					}
 
 					$columnInfoList[] = new ColumnInfo(

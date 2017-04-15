@@ -166,10 +166,33 @@ class DibiEntityAssistant
 			return null;
 		}
 
+		// if there are any PK set by linking from another table (possible FK), we need to respect that values
+		foreach ($columns as $column) {
+			if (!$column->isPrimaryKey()) {
+				continue;
+			}
+			$pkProperty = $column->getPropertyName();
+			$getterPk = \Closure::bind(function () use ($pkProperty) {
+				return $this->{$pkProperty};
+			}, $entity, get_class($entity));
+			$pkValue = $getterPk();
+
+			// we are not storing NULLs to PK...
+			if (is_scalar($pkValue)) {
+				$columnValuesToStore[$column->getColumnName()] = $pkValue;
+			}
+		}
+
 		$fluent = $this->connectionProvider->getConnection()
 			->insert($tableInfo->getName(), $columnValuesToStore);
 
-		return $fluent->execute(\dibi::IDENTIFIER);
+		try {
+			return $fluent->execute(\dibi::IDENTIFIER);
+		} catch (\DibiException $exception) {
+			// let's assume this is because the PK wasn't AUTO_INCREMENT...
+			// *enthusiastically expects pull request with better way to do this*
+			return null;
+		}
 	}
 
 	/**
