@@ -4,6 +4,7 @@ namespace SpareParts\Pillar\Assistant\Dibi;
 use SpareParts\Pillar\Entity\IEntity;
 use SpareParts\Pillar\Mapper\Dibi\AnnotationMapper;
 use SpareParts\Pillar\Mapper\Dibi\ColumnInfo;
+use SpareParts\Pillar\Mapper\Dibi\IEntityMapping;
 use SpareParts\Pillar\Mapper\Dibi\TableInfo;
 use SpareParts\Pillar\Mapper\EntityMappingException;
 
@@ -73,42 +74,24 @@ class DibiEntityAssistant
 	public function update(IEntity $entity, array $tables = null)
 	{
 		$mapping = $this->mapper->getEntityMapping($entity);
-		$tableInfos = $mapping->getTables();
-		if (!is_null($tables)) {
-			// grab TableInfo of given $tables
-			$tableInfos = array_map(function ($tableName) use ($tableInfos, $entity) {
-				if (!isset($tableInfos[$tableName])) {
-					throw new UnableToSaveException(sprintf('Unable to save entity: `%s`, unknown table `%s`', get_class($entity), $tableName));
-				}
-				return $tableInfos[$tableName];
-			}, $tables);
-		}
+		$tableInfos = $this->sanitizeTableInfos($entity, $tables);
 
+		// we iterate over tables and update each of them that has changed
 		$affectedRows = 0;
 		foreach ($tableInfos as $tableInfo) {
 			// we need array key of ColumnInfo[] to be the column name for easy handling
-			/** @var ColumnInfo[] $columns */
-			$columns = [];
-			foreach ($mapping->getColumnsForTable($tableInfo->getIdentifier()) as $columnInfo) {
-				$columns[$columnInfo->getPropertyName()] = $columnInfo;
-			}
-			// properties/columns that changed in this table
-			$changedProperties = $entity->getChangedProperties(array_keys($columns));
+			$columnInfos = $this->getColumnInfosForTable($mapping, $tableInfo);
+			$propertyList = array_keys($columnInfos);
 
-			$columnValuesToStore = [];
-			foreach ($changedProperties as $changedProperty => $newPropertyValue) {
-				// sanity check: is changed property in the $tableName table?
-				if (!isset($columns[$changedProperty])) {
-					continue;
-				}
-				// we are not updating primary keys of tables - this should be done by inserting new record and changing linked rows
-				if ($columns[$changedProperty]->isPrimaryKey()) {
-					continue;
-				}
+			// properties that changed in this table
+			$changedProperties = $entity->getChangedProperties($propertyList);
 
-				$columnName = $columns[$changedProperty]->getColumnName();
-				$columnValuesToStore[$columnName] = $newPropertyValue;
-			}
+			// now that we have list of changed properties, we can make a list of DB columns that should be updated
+			$columnInfoListToUpdate = $this->prepareListToUpdate($columnInfos, $changedProperties);
+
+			// map property values to columns
+			$columnValuesToStore = $this->getEntityPropertyValuesMappedToColumns($entity, $columnInfoListToUpdate);
+
 			// nothing to update in this table
 			if (!count($columnValuesToStore)) {
 				continue;
@@ -118,7 +101,7 @@ class DibiEntityAssistant
 				->update($tableInfo->getName(), $columnValuesToStore)
 				->limit(1);
 
-			$fluent = $this->addPKToFluent($entity, $tableInfo->getIdentifier(), $columns, $fluent);
+			$fluent = $this->addPKToFluent($entity, $tableInfo->getIdentifier(), $columnInfos, $fluent);
 			$affectedRows += $fluent->execute(\dibi::AFFECTED_ROWS);
 		}
 		return $affectedRows;
@@ -128,10 +111,10 @@ class DibiEntityAssistant
 	 * @param IEntity $entity
 	 * @param string $tableName
 	 *
-	 * @return int|string|null
+	 * @return int|null|string
 	 *
 	 * @throws EntityMappingException
-	 * @throws \DibiException
+	 * @throws UnableToSaveException
 	 * @throws \InvalidArgumentException
 	 */
 	public function insert(IEntity $entity, $tableName)
@@ -143,44 +126,38 @@ class DibiEntityAssistant
 		}
 		$tableInfo = $tableInfos[$tableName];
 
-		$changedProperties = $entity->getChangedProperties($this->getEntityProperties($mapping->getEntityClassName()));
 		// we need array key of ColumnInfo[] to be the column name for easy handling
-		/** @var ColumnInfo[] $columns */
-		$columns = [];
-		foreach ($mapping->getColumnsForTable($tableName) as $columnInfo) {
-			$columns[$columnInfo->getPropertyName()] = $columnInfo;
-		}
+		$columnInfos = $this->getColumnInfosForTable($mapping, $tableInfo);
 
-		$columnValuesToStore = [];
-		foreach ($changedProperties as $changedProperty => $newPropertyValue) {
-			// is changed property in $tableName table?
-			if (!isset($columns[$changedProperty])) {
-				continue;
+		// entity will tell us which properties did change
+		$changedProperties = $entity->getChangedProperties($this->getEntityProperties($mapping->getEntityClassName()));
+		// ... then we can find DB mapping for those properties
+		$changedColumnInfos = array_filter(
+			$columnInfos,
+			function (ColumnInfo $columnInfo) use ($changedProperties) {
+				return in_array($columnInfo->getPropertyName(), $changedProperties);
 			}
+		);
+		// now we know database columns and can prepare data for inserting into DB
+		$columnValuesToStore = $this->getEntityPropertyValuesMappedToColumns($entity, $changedColumnInfos);
 
-			$columnName = $columns[$changedProperty]->getColumnName();
-			$columnValuesToStore[$columnName] = $newPropertyValue;
-		}
-		// nothing to store in this table
+		// nothing to store in this table?
 		if (!count($columnValuesToStore)) {
 			return null;
 		}
 
 		// if there are any PK set by linking from another table (possible FK), we need to respect that values
-		foreach ($columns as $column) {
-			if (!$column->isPrimaryKey()) {
+		foreach ($columnInfos as $columnInfo) {
+			if (!$columnInfo->isPrimaryKey()) {
 				continue;
 			}
-			$pkProperty = $column->getPropertyName();
-			$getterPk = \Closure::bind(function () use ($pkProperty) {
-				return $this->{$pkProperty};
-			}, $entity, get_class($entity));
-			$pkValue = $getterPk();
+			$pkValue = $this->getEntityPropertyValue($entity, $columnInfo);
 
 			// we are not storing NULLs to PK...
-			if (is_scalar($pkValue)) {
-				$columnValuesToStore[$column->getColumnName()] = $pkValue;
+			if (is_null($pkValue)) {
+				continue;
 			}
+			$columnValuesToStore[$columnInfo->getColumnName()] = $pkValue;
 		}
 
 		$fluent = $this->connectionProvider->getConnection()
@@ -190,8 +167,10 @@ class DibiEntityAssistant
 			return $fluent->execute(\dibi::IDENTIFIER);
 		} catch (\DibiException $exception) {
 			// let's assume this is because the PK wasn't AUTO_INCREMENT...
-			// *enthusiastically expects pull request with better way to do this*
-			return null;
+			// *waiting for pull request with better way to do this :)*
+			if ($exception->getMessage() !== 'Cannot retrieve last generated ID.') {
+				throw $exception;
+			}
 		}
 	}
 
@@ -219,12 +198,9 @@ class DibiEntityAssistant
 			->limit(1);
 
 		// we need array key of ColumnInfo[] to be the column name for easy handling
-		/** @var ColumnInfo[] $columns */
-		$columns = [];
-		foreach ($mapping->getColumnsForTable($tableName) as $columnInfo) {
-			$columns[$columnInfo->getPropertyName()] = $columnInfo;
-		}
-		$fluent = $this->addPKToFluent($entity, $tableInfo->getName(), $columns, $fluent);
+		/** @var ColumnInfo[] $columnInfos */
+		$columnInfos = $this->getColumnInfosForTable($mapping, $tableInfo);
+		$fluent = $this->addPKToFluent($entity, $tableInfo->getName(), $columnInfos, $fluent);
 
 		return $fluent->execute(\dibi::AFFECTED_ROWS);
 	}
@@ -250,19 +226,15 @@ class DibiEntityAssistant
 				get_class($entity)));
 		}
 		// all columns marked as "primary" are considered to be a part of primary key
-		foreach ($pkColumns as $pkColumn) {
-			$pkProperty = $columns[ $pkColumn->getPropertyName() ]->getPropertyName();
-			$getterPk = \Closure::bind(function () use ($pkProperty) {
-				return $this->{$pkProperty};
-			}, $entity, get_class($entity));
-			$pkValue = $getterPk();
-			if (!is_scalar($pkValue)) {
-				throw new UnableToSaveException(sprintf('Entity: `%s` should have its table: `%s` saved, but primary key column\'s : `%s` value is not a scalar (%s),', get_class($entity), $tableName, $pkColumn->getColumnName(), print_r($pkValue, true)));
+		foreach ($pkColumns as $pkColumnInfo) {
+			$pkValue = $this->getEntityPropertyValue($entity, $pkColumnInfo);
+			if (is_null($pkValue)) {
+				throw new UnableToSaveException(sprintf('Entity: `%s` should have its table: `%s` saved, but primary key column\'s : `%s` value is empty (null),', get_class($entity), $tableName, $pkColumn->getColumnName()));
 			}
 
 			$fluent->where(
 				'%n = %i',
-				$pkColumn->getColumnName(),
+				$pkColumnInfo->getColumnName(),
 				$pkValue
 			);
 		}
@@ -286,8 +258,105 @@ class DibiEntityAssistant
 					$properties[] = $columnInfo->getPropertyName();
 				}
 			}
-			$this->entityPropertiesCache[$entityClassName] = $properties;
+			$this->entityPropertiesCache[$entityClassName] = array_unique($properties);
 		}
 		return $this->entityPropertiesCache[$entityClassName];
+	}
+
+
+	/**
+	 * @param IEntity $entity
+	 * @param ColumnInfo[] $columnInfoList
+	 * @return mixed[]
+	 */
+	protected function getEntityPropertyValuesMappedToColumns(IEntity $entity, array $columnInfoList)
+	{
+		$columnValues = [];
+		foreach ($columnInfoList as $columnInfo) {
+			$columnValues[$columnInfo->getColumnName()] = $this->getEntityPropertyValue($entity, $columnInfo);
+		}
+		return $columnValues;
+	}
+
+	/**
+	 * @param IEntity $entity
+	 * @param ColumnInfo $property
+	 * @return mixed
+	 */
+	protected function getEntityPropertyValue(IEntity $entity, ColumnInfo $property)
+	{
+		$propName = $property->getPropertyName();
+		$getterPk = \Closure::bind(function () use ($propName) {
+			return $this->{$propName};
+		}, $entity, get_class($entity));
+
+		return $getterPk();
+	}
+
+	/**
+	 * @param ColumnInfo[] $columnInfos
+	 * @param string[] $changedProperties
+	 * @return ColumnInfo[]
+	 */
+	private function prepareListToUpdate(array $columnInfos, array $changedProperties)
+	{
+		$columnInfoListToUpdate = array_filter(
+			$columnInfos,
+			function (ColumnInfo $columnInfo) use ($changedProperties) {
+				// never update a PK
+				if ($columnInfo->isPrimaryKey()) {
+					return false;
+				}
+				// update changed properties
+				if (in_array($columnInfo->getPropertyName(), $changedProperties)) {
+					return true;
+				}
+
+				return false;
+			}
+		);
+
+		return $columnInfoListToUpdate;
+	}
+
+	/**
+	 * @param IEntity $entity
+	 * @param array|null $tables
+	 * @return TableInfo[]
+	 * @throws EntityMappingException
+	 */
+	private function sanitizeTableInfos(IEntity $entity, array $tables = null)
+	{
+		$mapping = $this->mapper->getEntityMapping($entity);
+		$tableInfos = $mapping->getTables();
+		if (!is_null($tables)) {
+			// grab TableInfo of given $tables
+			$tableInfos = array_map(function ($tableName) use ($tableInfos, $entity) {
+				if (!isset($tableInfos[ $tableName ])) {
+					throw new UnableToSaveException(sprintf('Unable to save entity: `%s`, unknown table `%s`',
+						get_class($entity), $tableName));
+				}
+
+				return $tableInfos[ $tableName ];
+			}, $tables);
+		}
+
+		return $tableInfos;
+	}
+
+	/**
+	 * @param IEntityMapping $mapping
+	 * @param TableInfo $tableInfo
+	 * @return ColumnInfo[]
+	 */
+	private function getColumnInfosForTable(IEntityMapping $mapping, TableInfo $tableInfo)
+	{
+		/** @var ColumnInfo[] $columnInfos */
+		$columnInfos = [];
+		foreach ($mapping->getColumnsForTable($tableInfo->getIdentifier()) as $columnInfo) {
+			$columnInfos[ $columnInfo->getPropertyName() ] = $columnInfo;
+		}
+
+		return $columnInfos;
 	}
 }

@@ -54,9 +54,10 @@ class AnnotationMapper implements IMapper
 					continue;
 				}
 
-				$tableInfoList[$classAnnotation->getIdentifier()] = new TableInfo(
+				$identifier = $classAnnotation->getIdentifier() ?: $classAnnotation->getName();
+				$tableInfoList[$identifier] = new TableInfo(
 					$classAnnotation->getName(),
-					$classAnnotation->getIdentifier() ?: $classAnnotation->getName(),
+					$identifier,
 					$classAnnotation->getCode()
 				);
 			}
