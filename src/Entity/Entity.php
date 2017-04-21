@@ -33,7 +33,7 @@ class Entity implements IEntity
 		foreach ($properties as $property) {
 			$originalValue = isset($this->_originalValues[$property]) ? $this->_originalValues[$property] : null;
 			if ($originalValue !== $this->{$property}) {
-				$changed[$property] = $this->{$property};
+				$changed[] = $property;
 			}
 		}
 		return $changed;
