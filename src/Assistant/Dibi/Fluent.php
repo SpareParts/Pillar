@@ -34,23 +34,26 @@ class Fluent extends \DibiFluent
 	 */
 	public function selectEntityProperties()
 	{
-		$selectFieldList = [];
+		$propertyList = [];
 		foreach ($this->entityMapping->getTables() as $table) {
 			foreach ($this->entityMapping->getColumnsForTable($table->getIdentifier()) as $column) {
-				if (!isset($selectFieldList[$column->getPropertyName()])) {
-					if ($column->getCustomSelectSql()) {
-						$this->select($column->getCustomSelectSql())->as($column->getPropertyName());
-					} else {
-						$selectFieldList[$column->getPropertyName()] = sprintf(
-							'%s.%s',
-							$column->getTableInfo()->getIdentifier(),
-							$column->getColumnName()
-						);
-					}
+				// each property may be mapped to multiple columns, we are using mapping to the FIRST ACTIVE table and ignoring the rest
+				if (isset($propertyList[$column->getPropertyName()])) {
+					continue;
+				}
+				$propertyList[$column->getPropertyName()] = true;
+
+				if ($column->getCustomSelectSql()) {
+					$this->select($column->getCustomSelectSql())->as($column->getPropertyName());
+				} else {
+					$this->select('%n', sprintf(
+						'%s.%s',
+						$column->getTableInfo()->getIdentifier(),
+						$column->getColumnName()
+					))->as($column->getPropertyName());
 				}
 			}
 		}
-		$this->select(array_flip($selectFieldList));
 		return $this;
 	}
 
@@ -72,25 +75,5 @@ class Fluent extends \DibiFluent
 			$this->__call('', [$table->getSqlJoinCode()]);
 		}
 		return $this;
-	}
-
-
-	public function setSorting(ISorting ...$sorting)
-	{
-
-	}
-
-	/**
-	 * @param array $data
-	 * @return IEntity
-	 */
-	public function rowClassFactory($data)
-	{
-		if ($this->entityFactory) {
-
-		}
-
-		// fallback
-		return $data;
 	}
 }
