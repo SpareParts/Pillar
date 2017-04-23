@@ -2,16 +2,16 @@
 namespace SpareParts\Pillar\Assistant\Dibi;
 
 use SpareParts\Pillar\Entity\IEntity;
-use SpareParts\Pillar\Mapper\Dibi\AnnotationMapper;
 use SpareParts\Pillar\Mapper\Dibi\ColumnInfo;
 use SpareParts\Pillar\Mapper\Dibi\IEntityMapping;
 use SpareParts\Pillar\Mapper\Dibi\TableInfo;
 use SpareParts\Pillar\Mapper\EntityMappingException;
+use SpareParts\Pillar\Mapper\IMapper;
 
 class DibiEntityAssistant
 {
 	/**
-	 * @var AnnotationMapper
+	 * @var IMapper
 	 */
 	protected $mapper;
 
@@ -32,11 +32,11 @@ class DibiEntityAssistant
 
 
 	/**
-	 * @param AnnotationMapper $mapper
+	 * @param IMapper $mapper
 	 * @param IConnectionProvider $connectionProvider
 	 * @param IEntityFactory $entityFactory
 	 */
-	public function __construct(AnnotationMapper $mapper, IEntityFactory $entityFactory, IConnectionProvider $connectionProvider)
+	public function __construct(IMapper $mapper, IEntityFactory $entityFactory, IConnectionProvider $connectionProvider)
 	{
 		$this->mapper = $mapper;
 		$this->connectionProvider = $connectionProvider;
