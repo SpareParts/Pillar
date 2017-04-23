@@ -1,13 +1,16 @@
 <?php
 namespace SpareParts\Pillar\Assistant\Dibi;
 
-use SpareParts\Pillar\Entity\IEntity;
+use SpareParts\Enum\Converter\MapConverter;
+use SpareParts\Pillar\Assistant\Dibi\Sorting\ISorting;
+use SpareParts\Pillar\Assistant\Dibi\Sorting\SortingDirectionEnum;
+use SpareParts\Pillar\Mapper\Dibi\ColumnInfo;
 use SpareParts\Pillar\Mapper\Dibi\IEntityMapping;
 
 class Fluent extends \DibiFluent
 {
 	/**
-	 * @var \SpareParts\Pillar\Mapper\IEntityMapping
+	 * @var IEntityMapping
 	 */
 	protected $entityMapping;
 
@@ -73,6 +76,51 @@ class Fluent extends \DibiFluent
 
 		foreach ($tables as $table) {
 			$this->__call('', [$table->getSqlJoinCode()]);
+		}
+		return $this;
+	}
+
+	/**
+	 * @param ISorting[] $sortingList
+	 * @return $this
+	 * @throws UnknownPropertyException
+	 * @throws \SpareParts\Enum\Converter\UnableToConvertException
+	 */
+	public function applySorting(array $sortingList)
+	{
+		if (count($sortingList) === 0) {
+			// don't try to apply empty $sortingList
+			return $this;
+		}
+
+		/** @var ColumnInfo[] $sortableProperties */
+		$sortableProperties = [];
+		foreach ($this->entityMapping->getTables() as $tableInfo) {
+			foreach ($this->entityMapping->getColumnsForTable($tableInfo->getIdentifier()) as $columnInfo) {
+				if (isset($sortableProperties[$columnInfo->getPropertyName()])) {
+					continue;
+				}
+				$sortableProperties[$columnInfo->getPropertyName()] = $columnInfo;
+			}
+		}
+		$directionMap = new MapConverter([
+			'ASC' => SortingDirectionEnum::ASCENDING(),
+			'DESC' => SortingDirectionEnum::DESCENDING(),
+		]);
+
+		foreach ($sortingList as $sorting) {
+			if (!isset($sortableProperties[$sorting->getProperty()])) {
+				throw new UnknownPropertyException(sprintf('Unable to map property: `%s` to entity: `%s`, please check whether the provided property name is correct.', $sorting->getProperty(), $this->entityMapping->getEntityClassName()));
+			}
+			$columnInfo = $sortableProperties[$sorting->getProperty()];
+			$this->orderBy(
+				'%n', sprintf(
+					'%s.%s',
+					$columnInfo->getTableInfo()->getIdentifier(),
+					$columnInfo->getColumnName()
+				),
+				$directionMap->fromEnum($sorting->getDirection())
+			);
 		}
 		return $this;
 	}
