@@ -163,8 +163,9 @@ class DibiEntityAssistant
 		$fluent = $this->connectionProvider->getConnection()
 			->insert($tableInfo->getName(), $columnValuesToStore);
 
+		$fluent->execute();
 		try {
-			return $fluent->execute(\dibi::IDENTIFIER);
+			return $this->connectionProvider->getConnection()->getInsertId();
 		} catch (\DibiException $exception) {
 			// let's assume this is because the PK wasn't AUTO_INCREMENT...
 			// *waiting for pull request with better way to do this :)*
@@ -172,6 +173,7 @@ class DibiEntityAssistant
 				throw $exception;
 			}
 		}
+		return null;
 	}
 
 	/**
