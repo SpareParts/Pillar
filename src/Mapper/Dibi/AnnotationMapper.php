@@ -65,9 +65,16 @@ class AnnotationMapper implements IMapper
 			$columnInfoList = [];
 			foreach ($class->getProperties() as $property) {
 				$enabledForSelect = true;
+				// null means this property is not mapped to ANY table = probably not mapped column - ignore it.
+				// true means this property is mapped to a table, and that table was not used - exception
+				// false means this property is mapped to a table and at least one of those tables is used - ok
+				$danglingProperty = null;
 				foreach ($this->annotationReader->getPropertyAnnotations($property) as $propertyAnnotation) {
 					if (!($propertyAnnotation instanceof Column)) {
 						continue;
+					}
+					if (is_null($danglingProperty)) {
+						$danglingProperty = true;
 					}
 
 					if (!isset($tableInfoList[$propertyAnnotation->getTable()])) {
@@ -75,6 +82,7 @@ class AnnotationMapper implements IMapper
 						continue;
 //						throw new EntityMappingException(sprintf('Entity :`%s` property: `%s` is mapped to table identified as: `%s`, but no such table identifier is present.', $className, $property->getName(), $propertyAnnotation->getTable()));
 					}
+					$danglingProperty = false;
 
 					$columnInfoList[] = new ColumnInfo(
 						$propertyAnnotation->getName() ?: $property->getName(),
@@ -88,6 +96,10 @@ class AnnotationMapper implements IMapper
 					// only first @column annotation should be used for selecting
 					// all following @column are there for saving/updating
 					$enabledForSelect = false;
+				}
+
+				if ($danglingProperty === true) {
+					throw new EntityMappingException(sprintf('Entity: `%s` has property `%s` mapped to tables, but none of those tables are used in the entity. Maybe you forgot to use the table in the select?', $className, $property->getName()));
 				}
 			}
 
