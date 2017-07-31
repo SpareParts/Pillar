@@ -79,18 +79,7 @@ class DibiEntityAssistant
 		// we iterate over tables and update each of them that has changed
 		$affectedRows = 0;
 		foreach ($tableInfos as $tableInfo) {
-			// we need array key of ColumnInfo[] to be the column name for easy handling
-			$columnInfos = $this->getColumnInfosForTable($mapping, $tableInfo);
-			$propertyList = array_keys($columnInfos);
-
-			// properties that changed in this table
-			$changedProperties = $entity->getChangedProperties($propertyList);
-
-			// now that we have list of changed properties, we can make a list of DB columns that should be updated
-			$columnInfoListToUpdate = $this->prepareListToUpdate($columnInfos, $changedProperties);
-
-			// map property values to columns
-			$columnValuesToStore = $this->getEntityPropertyValuesMappedToColumns($entity, $columnInfoListToUpdate);
+			$columnValuesToStore = $this->getValuesToUpdate($entity, $mapping, $tableInfo);
 
 			// nothing to update in this table
 			if (!count($columnValuesToStore)) {
@@ -101,6 +90,7 @@ class DibiEntityAssistant
 				->update($tableInfo->getName(), $columnValuesToStore)
 				->limit(1);
 
+			$columnInfos = $this->getColumnInfosForTable($mapping, $tableInfo);
 			$fluent = $this->addPKToFluent($entity, $tableInfo->getIdentifier(), $columnInfos, $fluent);
 			$affectedRows += $fluent->execute(\dibi::AFFECTED_ROWS);
 		}
@@ -111,7 +101,7 @@ class DibiEntityAssistant
 	 * @param IEntity $entity
 	 * @param string $tableName
 	 *
-	 * @return int|null|string
+	 * @return int|null|string Primary key (in case the new record was inserted)
 	 *
 	 * @throws EntityMappingException
 	 * @throws UnableToSaveException
@@ -120,52 +110,54 @@ class DibiEntityAssistant
 	public function insert(IEntity $entity, $tableName)
 	{
 		$mapping = $this->mapper->getEntityMapping($entity);
-		$tableInfos = $mapping->getTables();
-		if (!isset($tableInfos[$tableName])) {
-			throw new UnableToSaveException(sprintf('Unable to save entity: `%s`, unknown table `%s`', get_class($entity), $tableName));
-		}
-		$tableInfo = $tableInfos[$tableName];
+		$tableInfo = $this->getTableInfoByTableName($entity, $mapping, $tableName);
+		$columnValuesToStore = $this->getValuesToInsert($entity, $mapping, $tableInfo);
 
-		// we need array key of ColumnInfo[] to be the column name for easy handling
-		$columnInfos = $this->getColumnInfosForTable($mapping, $tableInfo);
+		$fluent = $this->connectionProvider->getConnection()
+			->insert($tableInfo->getName(), $columnValuesToStore);
 
-		// entity will tell us which properties did change
-		$changedProperties = $entity->getChangedProperties($this->getEntityProperties($mapping->getEntityClassName()));
-		// ... then we can find DB mapping for those properties
-		$changedColumnInfos = array_filter(
-			$columnInfos,
-			function (ColumnInfo $columnInfo) use ($changedProperties) {
-				return in_array($columnInfo->getPropertyName(), $changedProperties);
+		try {
+			return $fluent->execute(\dibi::IDENTIFIER);
+		} catch (\DibiException $exception) {
+			// let's assume this is because the PK wasn't AUTO_INCREMENT...
+			// *waiting for pull request with better way to do this :)*
+			if ($exception->getMessage() !== 'Cannot retrieve last generated ID.') {
+				throw $exception;
 			}
-		);
-		// now we know database columns and can prepare data for inserting into DB
-		$columnValuesToStore = $this->getEntityPropertyValuesMappedToColumns($entity, $changedColumnInfos);
+		}
+		return null;
+	}
 
-		// nothing to store in this table?
-		if (!count($columnValuesToStore)) {
+	/**
+	 * !!! This method "spends" values in the autoincrement columns (even when not inserting)), so use it wisely.
+	 *
+	 * @param IEntity $entity
+	 * @param $tableName
+	 *
+	 * @return int|string|null
+	 * @throws \DibiException
+	 * @internal param \string[] $tables
+	 */
+	public function insertOrUpdate(IEntity $entity, $tableName)
+	{
+		$mapping = $this->mapper->getEntityMapping($entity);
+		$tableInfo = $this->getTableInfoByTableName($entity, $mapping, $tableName);
+		$columnValuesToStore = $this->getValuesToInsert($entity, $mapping, $tableInfo);
+		$columnValuesToUpdate = $this->getValuesToUpdate($entity, $mapping, $tableInfo);
+
+		if (!$columnValuesToStore) {
 			return null;
-		}
-
-		// if there are any PK set by linking from another table (possible FK), we need to respect that values
-		foreach ($columnInfos as $columnInfo) {
-			if (!$columnInfo->isPrimaryKey()) {
-				continue;
-			}
-			$pkValue = $this->getEntityPropertyValue($entity, $columnInfo);
-
-			// we are not storing NULLs to PK...
-			if (is_null($pkValue)) {
-				continue;
-			}
-			$columnValuesToStore[$columnInfo->getColumnName()] = $pkValue;
 		}
 
 		$fluent = $this->connectionProvider->getConnection()
 			->insert($tableInfo->getName(), $columnValuesToStore);
 
-		$fluent->execute();
+		if ($columnValuesToUpdate) {
+			$fluent = $fluent->onDuplicateKeyUpdate('%a', $columnValuesToUpdate);
+		}
+
 		try {
-			return $this->connectionProvider->getConnection()->getInsertId();
+			return $fluent->execute(\dibi::IDENTIFIER);
 		} catch (\DibiException $exception) {
 			// let's assume this is because the PK wasn't AUTO_INCREMENT...
 			// *waiting for pull request with better way to do this :)*
@@ -189,11 +181,7 @@ class DibiEntityAssistant
 	public function delete(IEntity $entity, $tableName)
 	{
 		$mapping = $this->mapper->getEntityMapping($entity);
-		$tableInfos = $mapping->getTables();
-		if (!isset($tableInfos[$tableName])) {
-			throw new UnableToSaveException(sprintf('Unable to save entity: `%s`, unknown table `%s`', get_class($entity), $tableName));
-		}
-		$tableInfo = $tableInfos[$tableName];
+		$tableInfo = $this->getTableInfoByTableName($entity, $mapping, $tableName);
 
 		$fluent = $this->connectionProvider->getConnection()
 			->delete($tableInfo->getName())
@@ -231,7 +219,7 @@ class DibiEntityAssistant
 		foreach ($pkColumns as $pkColumnInfo) {
 			$pkValue = $this->getEntityPropertyValue($entity, $pkColumnInfo);
 			if (is_null($pkValue)) {
-				throw new UnableToSaveException(sprintf('Entity: `%s` should have its table: `%s` saved, but primary key column\'s : `%s` value is empty (null),', get_class($entity), $tableName, $pkColumn->getColumnName()));
+				throw new UnableToSaveException(sprintf('Entity: `%s` should have its table: `%s` saved, but primary key column\'s : `%s` value is empty (null),', get_class($entity), $tableName, $pkColumnInfo->getColumnName()));
 			}
 
 			$fluent->where(
@@ -275,6 +263,9 @@ class DibiEntityAssistant
 	{
 		$columnValues = [];
 		foreach ($columnInfoList as $columnInfo) {
+			if ($columnInfo->isDeprecated()) {
+				continue;
+			}
 			$columnValues[$columnInfo->getColumnName()] = $this->getEntityPropertyValue($entity, $columnInfo);
 		}
 		return $columnValues;
@@ -307,6 +298,10 @@ class DibiEntityAssistant
 			function (ColumnInfo $columnInfo) use ($changedProperties) {
 				// never update a PK
 				if ($columnInfo->isPrimaryKey()) {
+					return false;
+				}
+				// if there is any `deprecated` column, ignore its value
+				if ($columnInfo->isDeprecated()) {
 					return false;
 				}
 				// update changed properties
@@ -360,5 +355,93 @@ class DibiEntityAssistant
 		}
 
 		return $columnInfos;
+	}
+
+	/**
+	 * @param IEntity $entity
+	 * @param IEntityMapping $entityMapping
+	 * @param TableInfo $tableInfo
+	 * @return mixed[]|null
+	 */
+	private function getValuesToInsert(
+		IEntity $entity,
+		IEntityMapping $entityMapping,
+		TableInfo $tableInfo
+	) {
+		// we need array key of ColumnInfo[] to be the column name for easy handling
+		$columnInfos = $this->getColumnInfosForTable($entityMapping, $tableInfo);
+
+		// entity will tell us which properties did change
+		$changedProperties = $entity->getChangedProperties($this->getEntityProperties($entityMapping->getEntityClassName()));
+		// ... then we can find DB mapping for those properties
+		$changedColumnInfos = array_filter(
+			$columnInfos,
+			function (ColumnInfo $columnInfo) use ($changedProperties) {
+				return in_array($columnInfo->getPropertyName(), $changedProperties);
+			}
+		);
+		// now we know database columns and can prepare data for inserting into DB
+		$columnValuesToStore = $this->getEntityPropertyValuesMappedToColumns($entity, $changedColumnInfos);
+
+		// nothing to store in this table?
+		if (!count($columnValuesToStore)) {
+			return null;
+		}
+
+		// if there are any PK set by linking from another table (possible FK), we need to respect that values
+		// if there are any `deprecated` columns, we need to insert their values
+		foreach ($columnInfos as $columnInfo) {
+			if (!$columnInfo->isPrimaryKey() && !$columnInfo->isDeprecated()) {
+				continue;
+			}
+			$value = $this->getEntityPropertyValue($entity, $columnInfo);
+
+			// we are not storing NULLs to PK...
+			if (is_null($value)) {
+				continue;
+			}
+			$columnValuesToStore[$columnInfo->getColumnName()] = $value;
+		}
+
+		return $columnValuesToStore;
+	}
+
+	/**
+	 * @param IEntity $entity
+	 * @param IEntityMapping $mapping
+	 * @param TableInfo $tableInfo
+	 * @return mixed[]
+	 */
+	private function getValuesToUpdate(IEntity $entity, $mapping, TableInfo $tableInfo)
+	{
+		// we need array key of ColumnInfo[] to be the column name for easy handling
+		$columnInfos = $this->getColumnInfosForTable($mapping, $tableInfo);
+		$propertyList = array_keys($columnInfos);
+
+		// properties that changed in this table
+		$changedProperties = $entity->getChangedProperties($propertyList);
+
+		// now that we have list of changed properties, we can make a list of DB columns that should be updated
+		$columnInfoListToUpdate = $this->prepareListToUpdate($columnInfos, $changedProperties);
+
+		// map property values to columns
+		$columnValuesToStore = $this->getEntityPropertyValuesMappedToColumns($entity, $columnInfoListToUpdate);
+		return $columnValuesToStore;
+	}
+
+	/**
+	 * @param IEntity $entity
+	 * @param IEntityMapping $mapping
+	 * @param string $tableName
+	 * @return TableInfo
+	 */
+	private function getTableInfoByTableName(IEntity $entity, IEntityMapping $mapping, $tableName)
+	{
+		$tableInfos = $mapping->getTables();
+		if (!isset($tableInfos[$tableName])) {
+			throw new UnableToSaveException(sprintf('Unable to save entity: `%s`, unknown table `%s`', get_class($entity), $tableName));
+		}
+		$tableInfo = $tableInfos[$tableName];
+		return $tableInfo;
 	}
 }

@@ -30,18 +30,25 @@ class ColumnInfo
 	private $enabledForSelect = true;
 
 	/**
-	 * @var string\null
+	 * @var string|null
 	 */
 	private $customSelectSql;
+
+	/**
+	 * @var bool
+	 */
+	private $isDeprecated;
 
 	/**
 	 * @param string $columnName
 	 * @param string $propertyName
 	 * @param TableInfo $tableInfo
 	 * @param bool $isPrimaryKey
+	 * @param bool $isDeprecated
 	 * @param bool $enabledForSelect
+	 * @param null $customSelectSql
 	 */
-	public function __construct($columnName, $propertyName, TableInfo $tableInfo, $isPrimaryKey, $enabledForSelect, $customSelectSql = null)
+	public function __construct($columnName, $propertyName, TableInfo $tableInfo, $isPrimaryKey, $isDeprecated, $enabledForSelect, $customSelectSql = null)
 	{
 		$this->columnName = $columnName;
 		$this->propertyName = $propertyName;
@@ -49,6 +56,7 @@ class ColumnInfo
 		$this->isPrimaryKey = $isPrimaryKey;
 		$this->enabledForSelect = $enabledForSelect;
 		$this->customSelectSql = $customSelectSql;
+		$this->isDeprecated = $isDeprecated;
 	}
 
 	/**
@@ -86,13 +94,21 @@ class ColumnInfo
 	/**
 	 * @return bool
 	 */
+	public function isDeprecated()
+	{
+		return $this->isDeprecated;
+	}
+
+	/**
+	 * @return bool
+	 */
 	public function isEnabledForSelect()
 	{
 		return $this->enabledForSelect;
 	}
 
 	/**
-	 * @return string\null
+	 * @return string|null
 	 */
 	public function getCustomSelectSql()
 	{

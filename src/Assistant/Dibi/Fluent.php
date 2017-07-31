@@ -44,6 +44,12 @@ class Fluent extends \DibiFluent
 				if (isset($propertyList[$column->getPropertyName()])) {
 					continue;
 				}
+				// do not select columns marked as "deprecated"
+				if ($column->isDeprecated()) {
+					continue;
+				}
+
+
 				$propertyList[$column->getPropertyName()] = true;
 
 				if ($column->getCustomSelectSql()) {
