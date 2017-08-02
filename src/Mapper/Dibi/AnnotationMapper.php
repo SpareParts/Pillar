@@ -81,6 +81,7 @@ class AnnotationMapper implements IMapper
 						$property->getName(),
 						$tableInfoList[$propertyAnnotation->getTable()],
 						$propertyAnnotation->isPrimary(),
+						$propertyAnnotation->isDeprecated(),
 						$enabledForSelect,
 						$propertyAnnotation->getCustomSelect()
 					);

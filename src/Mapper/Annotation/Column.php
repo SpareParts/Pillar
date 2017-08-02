@@ -29,6 +29,11 @@ class Column
 	/**
 	 * @var bool
 	 */
+	protected $deprecated = false;
+
+	/**
+	 * @var bool
+	 */
 	protected $primary = false;
 
 	public function __construct($values)
@@ -44,6 +49,9 @@ class Column
 		}
 		if (isset($values['primary'])) {
 			$this->primary = $values['primary'];
+		}
+		if (isset($values['deprecated'])) {
+			$this->deprecated = $values['deprecated'];
 		}
 		if (isset($values['customSelect'])) {
 			$this->customSelect = $values['customSelect'];
@@ -72,6 +80,14 @@ class Column
 	public function isPrimary()
 	{
 		return $this->primary;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isDeprecated()
+	{
+		return $this->deprecated;
 	}
 
 	/**
