@@ -6,7 +6,7 @@
   "require": {
     "php":  ">=5.5.0",
     "dibi/dibi": "~2",
-    "spareparts/enum": "^0.2",
+    "spareparts/enum": "~0",
     "doctrine/annotations": "~1"
   },
   "require-dev": {
