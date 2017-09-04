@@ -45,15 +45,16 @@ class DibiEntityAssistant
 
 	/**
 	 * @param string|IEntity $entityClassOrInstance
+	 * @param bool $returnEntities If set to false, does not try to format fetched data using EntityFactory
 	 * @return Fluent
 	 * @throws \SpareParts\Pillar\Mapper\EntityMappingException
 	 */
-	public function fluent($entityClassOrInstance)
+	public function fluent($entityClassOrInstance, $returnEntities = true)
 	{
 		$fluent = new Fluent(
 			$this->connectionProvider->getConnection(),
 			$this->mapper->getEntityMapping($entityClassOrInstance),
-			$this->entityFactory
+			$returnEntities ? $this->entityFactory : null
 		);
 		return $fluent;
 	}
