@@ -59,6 +59,23 @@ class DibiEntityAssistant
 		return $fluent;
 	}
 
+
+	/**
+	 * This method returns "blank" fluent, does not force you to use IEntity resulting class (i.e. fetches plain array)
+	 *
+	 * @param string|IEntity $entityClassOrInstance
+	 * @return Fluent
+	 * @throws \SpareParts\Pillar\Mapper\EntityMappingException
+	 */
+	public function fluentForAggregateCalculations($entityClassOrInstance)
+	{
+		$fluent = new Fluent(
+			$this->connectionProvider->getConnection(),
+			$this->mapper->getEntityMapping($entityClassOrInstance)
+		);
+		return $fluent;
+	}
+
 	/**
 	 * Update entity database representation to current entity values.
 	 *
