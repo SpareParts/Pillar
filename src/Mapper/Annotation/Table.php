@@ -7,7 +7,7 @@ use Doctrine\Common\Annotations\Annotation\Required;
  * @Annotation
  * @Target("CLASS")
  */
-class Table
+class Table implements IPillarAnnotation
 {
 	/**
 	 * @var string

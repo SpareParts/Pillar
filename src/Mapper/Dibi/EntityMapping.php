@@ -19,15 +19,22 @@ class EntityMapping implements IEntityMapping
 	private $entityClassName;
 
 	/**
+	 * @var bool
+	 */
+	private $isVirtualEntity;
+
+	/**
 	 * @param string $entityClassName
 	 * @param TableInfo[] $tableInfoList
 	 * @param ColumnInfo[] $columnInfoList
+	 * @param bool $isVirtualEntity
 	 */
-	public function __construct($entityClassName, array $tableInfoList, array $columnInfoList)
+	public function __construct($entityClassName, array $tableInfoList, array $columnInfoList, $isVirtualEntity = false)
 	{
 		$this->tableInfoList = $tableInfoList;
 		$this->columnInfoList = $columnInfoList;
 		$this->entityClassName = $entityClassName;
+		$this->isVirtualEntity = $isVirtualEntity;
 	}
 
 	/**
@@ -55,5 +62,12 @@ class EntityMapping implements IEntityMapping
 		return array_filter($this->columnInfoList, function (ColumnInfo $columnInfo) use ($tableIdentifier) {
 			return ($columnInfo->getTableInfo()->getIdentifier() === $tableIdentifier);
 		});
+	}
+
+	/**
+	 * @return bool
+	 */
+	public  function isVirtualEntity() {
+		return $this->isVirtualEntity;
 	}
 }

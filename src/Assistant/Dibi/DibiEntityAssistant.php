@@ -51,9 +51,14 @@ class DibiEntityAssistant
 	 */
 	public function fluent($entityClassOrInstance, $returnEntities = true)
 	{
+		$mapping = $this->mapper->getEntityMapping($entityClassOrInstance);
+		if ($mapping->isVirtualEntity()) {
+			throw new UnableToSaveException('Virtual property cannot be persisted!');
+		}
+
 		$fluent = new Fluent(
 			$this->connectionProvider->getConnection(),
-			$this->mapper->getEntityMapping($entityClassOrInstance),
+			$mapping,
 			$returnEntities ? $this->entityFactory : null
 		);
 		return $fluent;
@@ -92,6 +97,9 @@ class DibiEntityAssistant
 	public function update(IEntity $entity, array $tables = null)
 	{
 		$mapping = $this->mapper->getEntityMapping($entity);
+		if ($mapping->isVirtualEntity()) {
+			throw new UnableToSaveException('Virtual property cannot be persisted!');
+		}
 		$tableInfos = $this->sanitizeTableInfos($entity, $tables);
 
 		// we iterate over tables and update each of them that has changed
@@ -128,6 +136,9 @@ class DibiEntityAssistant
 	public function insert(IEntity $entity, $tableName)
 	{
 		$mapping = $this->mapper->getEntityMapping($entity);
+		if ($mapping->isVirtualEntity()) {
+			throw new UnableToSaveException('Virtual property cannot be persisted!');
+		}
 		$tableInfo = $this->getTableInfoByTableName($entity, $mapping, $tableName);
 		$columnValuesToStore = $this->getValuesToInsert($entity, $mapping, $tableInfo);
 
@@ -159,6 +170,9 @@ class DibiEntityAssistant
 	public function insertOrUpdate(IEntity $entity, $tableName)
 	{
 		$mapping = $this->mapper->getEntityMapping($entity);
+		if ($mapping->isVirtualEntity()) {
+			throw new UnableToSaveException('Virtual property cannot be persisted!');
+		}
 		$tableInfo = $this->getTableInfoByTableName($entity, $mapping, $tableName);
 		$columnValuesToStore = $this->getValuesToInsert($entity, $mapping, $tableInfo);
 		$columnValuesToUpdate = $this->getValuesToUpdate($entity, $mapping, $tableInfo);
@@ -199,6 +213,11 @@ class DibiEntityAssistant
 	public function delete(IEntity $entity, $tableName)
 	{
 		$mapping = $this->mapper->getEntityMapping($entity);
+
+		if ($mapping->isVirtualEntity()) {
+			throw new UnableToSaveException('Virtual property cannot be persisted!');
+		}
+
 		$tableInfo = $this->getTableInfoByTableName($entity, $mapping, $tableName);
 
 		$fluent = $this->connectionProvider->getConnection()

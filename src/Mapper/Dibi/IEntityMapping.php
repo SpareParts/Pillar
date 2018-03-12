@@ -21,4 +21,9 @@ interface IEntityMapping
 	 * @return ColumnInfo[]
 	 */
 	public function getColumnsForTable($tableIdentifier);
+
+	/**
+	 * @return bool
+	 */
+	public function isVirtualEntity();
 }

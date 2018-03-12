@@ -7,7 +7,7 @@ use Doctrine\Common\Annotations\Annotation\Required;
  * @Annotation
  * @Target("PROPERTY")
  */
-class Column
+class Column implements IPillarAnnotation
 {
 	/**
 	 * @var string
