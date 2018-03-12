@@ -6,7 +6,7 @@ use Doctrine\Common\Annotations\Annotation\Required;
 /**
  * @Annotation
  */
-class Storage
+class Storage implements IPillarAnnotation
 {
 	/**
 	 * @var string

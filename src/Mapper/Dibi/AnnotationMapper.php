@@ -4,7 +4,9 @@ namespace SpareParts\Pillar\Mapper\Dibi;
 use Doctrine\Common\Annotations\Reader;
 use SpareParts\Pillar\Entity\IEntity;
 use SpareParts\Pillar\Mapper\Annotation\Column;
+use SpareParts\Pillar\Mapper\Annotation\IPillarAnnotation;
 use SpareParts\Pillar\Mapper\Annotation\Table;
+use SpareParts\Pillar\Mapper\Annotation\VirtualEntity;
 use SpareParts\Pillar\Mapper\EntityMappingException;
 use SpareParts\Pillar\Mapper\IMapper;
 
@@ -48,18 +50,25 @@ class AnnotationMapper implements IMapper
 		if (!isset($this->dibiMappingCache[$className])) {
 			$class = new \ReflectionClass($className);
 			$tableInfoList = [];
+			$isVirtualEntity = false;
 
 			foreach ($this->annotationReader->getClassAnnotations($class) as $classAnnotation) {
-				if (!($classAnnotation instanceof Table)) {
+				if (!($classAnnotation instanceof IPillarAnnotation)) {
 					continue;
 				}
 
-				$identifier = $classAnnotation->getIdentifier() ?: $classAnnotation->getName();
-				$tableInfoList[$identifier] = new TableInfo(
-					$classAnnotation->getName(),
-					$identifier,
-					$classAnnotation->getCode()
-				);
+				if ($classAnnotation instanceof Table) {
+					$identifier = $classAnnotation->getIdentifier() ?: $classAnnotation->getName();
+					$tableInfoList[$identifier] = new TableInfo(
+						$classAnnotation->getName(),
+						$identifier,
+						$classAnnotation->getCode()
+					);
+				}
+
+				if ($classAnnotation instanceof VirtualEntity) {
+					$isVirtualEntity = true;
+				}
 			}
 
 			$columnInfoList = [];
@@ -98,13 +107,15 @@ class AnnotationMapper implements IMapper
 					$enabledForSelect = false;
 				}
 
-				if ($danglingProperty === true) {
+				// dangling property = property which will never be selected, throw an exception
+				// ignore dangling properties for abstract and virtual entities
+				if ($danglingProperty === true && !$class->isAbstract() && !$isVirtualEntity) {
 					throw new EntityMappingException(sprintf('Entity: `%s` has property `%s` mapped to tables, but none of those tables are used in the entity. Maybe you forgot to use the table in the select?', $className, $property->getName()));
 				}
 			}
 
 			$this->dibiMappingCache[$className] = new EntityMapping(
-				$className, $tableInfoList, $columnInfoList
+				$className, $tableInfoList, $columnInfoList, $isVirtualEntity
 			);
 		}
 		return $this->dibiMappingCache[$className];

@@ -1,6 +1,7 @@
 <?php
 namespace SpareParts\Pillar\Mapper;
 
+use SpareParts\Pillar\Entity\IEntity;
 use SpareParts\Pillar\Mapper\Dibi\IEntityMapping;
 
 interface IMapper
