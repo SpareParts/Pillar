@@ -1,7 +1,7 @@
 <?php
 namespace SpareParts\Pillar\Mapper;
 
-class EntityMappingException extends \InvalidArgumentException
+class EntityMappingException extends \LogicException
 {
 
 }
