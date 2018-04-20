@@ -127,11 +127,11 @@ class DibiEntityAssistant
 	 * @param IEntity $entity
 	 * @param string $tableName
 	 *
-	 * @return int|null|string Primary key (in case the new record was inserted)
+	 * @return int|null|string Primary key in case the new record was inserted, null otherwise
 	 *
-	 * @throws EntityMappingException
 	 * @throws UnableToSaveException
 	 * @throws \InvalidArgumentException
+	 * @throws \DibiException
 	 */
 	public function insert(IEntity $entity, $tableName)
 	{
@@ -141,6 +141,10 @@ class DibiEntityAssistant
 		}
 		$tableInfo = $this->getTableInfoByTableName($entity, $mapping, $tableName);
 		$columnValuesToStore = $this->getValuesToInsert($entity, $mapping, $tableInfo);
+
+		if (!$columnValuesToStore) {
+			return null;
+		}
 
 		$fluent = $this->connectionProvider->getConnection()
 			->insert($tableInfo->getName(), $columnValuesToStore);
@@ -159,6 +163,7 @@ class DibiEntityAssistant
 
 	/**
 	 * !!! This method "spends" values in the autoincrement columns (even when not inserting)), so use it wisely.
+	 * This is caused by how mysql treats ON DUPLICATE KEY INSERT clause commands.
 	 *
 	 * @param IEntity $entity
 	 * @param $tableName

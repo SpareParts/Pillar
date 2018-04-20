@@ -6,6 +6,7 @@ use SpareParts\Pillar\Assistant\Dibi\Sorting\ISorting;
 use SpareParts\Pillar\Assistant\Dibi\Sorting\SortingDirectionEnum;
 use SpareParts\Pillar\Mapper\Dibi\ColumnInfo;
 use SpareParts\Pillar\Mapper\Dibi\IEntityMapping;
+use SpareParts\Pillar\Mapper\Dibi\TableInfo;
 
 class Fluent extends \DibiFluent
 {
@@ -67,13 +68,39 @@ class Fluent extends \DibiFluent
 	}
 
 	/**
+	 * @param string[] $propertyList If present, Pillar will try to include only those tables that are needed to select these properties. This might not work 100% of the times, mostly if there is a `silent mid-table` in the joins. In this case use @see $additionalTableList
+	 * @param string[] $additionalTableList If present, those tables will be used instead of (default) all tables.
+	 *
 	 * @return $this
 	 */
-	public function fromEntityDataSources()
+	public function fromEntityDataSources(array $propertyList = null, array $additionalTableList = null)
 	{
 		$tables = $this->entityMapping->getTables();
 
 		$primaryTable = array_shift($tables);
+
+		$propertyTables = [];
+		if ($propertyList !== null) {
+			$propertyTables = $this->preparePropertyTables($propertyList);
+		}
+
+		$additionalTables = [];
+		if ($additionalTableList !== null) {
+			$additionalTables = array_filter($tables, function (TableInfo $tableInfo) use ($additionalTableList) {
+				return in_array($tableInfo->getIdentifier(), $additionalTableList);
+			});
+		}
+
+		$innerJoinTables = array_filter($tables, function (TableInfo $tableInfo) {
+			return (strtolower(substr($tableInfo->getSqlJoinCode(), 0, 5)) === 'inner');
+		});
+
+		if ($propertyList || $additionalTableList) {
+			// in case I wish to restrict the result
+			$tables = array_unique(array_merge($innerJoinTables, $propertyTables, $additionalTables));
+		}
+
+
 		$this->from(sprintf(
 			'`%s` AS `%s`',
 			$primaryTable->getName(),
@@ -84,6 +111,34 @@ class Fluent extends \DibiFluent
 			$this->__call('', [$table->getSqlJoinCode()]);
 		}
 		return $this;
+	}
+
+	/**
+	 * @param string[] $propertyList
+	 * @return TableInfo[]
+	 */
+	private function preparePropertyTables(array $propertyList)
+	{
+		// tables that should not be important to select correct row (ie. left joins)
+		/** @var TableInfo[] $optionalTables */
+		$optionalTables = array_filter($this->entityMapping->getTables(), function (TableInfo $tableInfo) {
+			return (strtolower(substr($tableInfo->getSqlJoinCode(), 0, 4)) === 'left');
+		});
+
+		$propertyTables = [];
+		// find out which of those tables are important for the properties
+		foreach ($optionalTables as $tableInfo) {
+			$propertyInfoList = $this->entityMapping->getColumnsForTable($tableInfo->getIdentifier());
+
+			$tablePropertyNames = array_map(function (ColumnInfo $columnInfo) {
+				return $columnInfo->getPropertyName();
+			}, $propertyInfoList);
+
+			if (count(array_intersect($tablePropertyNames, $propertyList))) {
+				$propertyTables[] = $tableInfo;
+			}
+		}
+		return $propertyTables;
 	}
 
 	/**

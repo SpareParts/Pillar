@@ -4,23 +4,24 @@
   "keywords":    ["orm", "model", "entity", "mysql", "database", "persistence"],
   "license":     "MIT",
   "require": {
-    "php":  ">=5.5.0",
+    "php":  ">=5.6.0",
     "dibi/dibi": "~2",
     "spareparts/enum": "~0",
     "doctrine/annotations": "~1"
   },
   "require-dev": {
-	"phpunit/phpunit": "~4",
-	"mockery/mockery": "^0.9.6"
+    "phpunit/phpunit": "~6",
+    "phpunit/dbunit": "~3",
+    "mockery/mockery": "~1"
   },
   "autoload": {
-	"psr-4": {
-	  "SpareParts\\Pillar\\": "src"
-	}
+    "psr-4": {
+      "SpareParts\\Pillar\\": "src"
+    }
   },
   "autoload-dev": {
-	"psr-4": {
-	  "SpareParts\\Pillar\\Test\\": "test"
-	}
+    "psr-4": {
+      "SpareParts\\Pillar\\Test\\": "test"
+    }
   }
 }

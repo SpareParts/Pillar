@@ -1,0 +1,17 @@
+language: php
+
+php:
+    - 7.1
+
+before_script:
+    - travis_retry composer self-update
+    - travis_retry composer install --ignore-platform-reqs --no-interaction
+    - travis_retry wget https://scrutinizer-ci.com/ocular.phar
+    - mkdir -p build/logs
+    - mysql -u root --password="" < test/Fixtures/dbscheme.sql
+
+script:
+    - vendor/bin/phpunit --coverage-clover=build/logs/clover.xml
+
+after_script:
+    - php ocular.phar code-coverage:upload --format=php-clover build/logs/clover.xml
