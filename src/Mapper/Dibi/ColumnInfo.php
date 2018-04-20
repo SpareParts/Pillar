@@ -46,7 +46,7 @@ class ColumnInfo
 	 * @param bool $isPrimaryKey
 	 * @param bool $isDeprecated
 	 * @param bool $enabledForSelect
-	 * @param null $customSelectSql
+	 * @param string|null $customSelectSql
 	 */
 	public function __construct($columnName, $propertyName, TableInfo $tableInfo, $isPrimaryKey, $isDeprecated, $enabledForSelect, $customSelectSql = null)
 	{

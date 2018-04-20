@@ -189,7 +189,7 @@ class DibiEntityAssistant
 		$fluent = $this->connectionProvider->getConnection()
 			->insert($tableInfo->getName(), $columnValuesToStore);
 
-		if ($columnValuesToUpdate) {
+		if (!empty($columnValuesToUpdate)) {
 			$fluent = $fluent->onDuplicateKeyUpdate('%a', $columnValuesToUpdate);
 		}
 

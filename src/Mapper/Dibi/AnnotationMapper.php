@@ -41,10 +41,10 @@ class AnnotationMapper implements IMapper
 	{
 		$className = $classnameOrInstance;
 		if (is_object($classnameOrInstance)) {
-			if (!($classnameOrInstance instanceof IEntity)) {
-				throw new EntityMappingException(sprintf('Expected class implementing IEntity interface, got %s instead', get_class($classnameOrInstance)));
-			}
 			$className = get_class($classnameOrInstance);
+			if (!($classnameOrInstance instanceof IEntity)) {
+				throw new EntityMappingException(sprintf('Expected class implementing IEntity interface, got %s instead', $className));
+			}
 		}
 
 		if (!isset($this->dibiMappingCache[$className])) {
@@ -110,12 +110,12 @@ class AnnotationMapper implements IMapper
 				// dangling property = property which will never be selected, throw an exception
 				// ignore dangling properties for abstract and virtual entities
 				if ($danglingProperty === true && !$class->isAbstract() && !$isVirtualEntity) {
-					throw new EntityMappingException(sprintf('Entity: `%s` has property `%s` mapped to tables, but none of those tables are used in the entity. Maybe you forgot to use the table in the select?', $className, $property->getName()));
+					throw new EntityMappingException(sprintf('Entity: `%s` has property `%s` mapped to tables, but none of those tables are used in the entity. Maybe you forgot to use the table in the select?', /** @scrutinizer ignore-type */$className, $property->getName()));
 				}
 			}
 
 			$this->dibiMappingCache[$className] = new EntityMapping(
-				$className, $tableInfoList, $columnInfoList, $isVirtualEntity
+			/** @scrutinizer ignore-type */$className, $tableInfoList, $columnInfoList, $isVirtualEntity
 			);
 		}
 		return $this->dibiMappingCache[$className];
