@@ -7,7 +7,7 @@ use SpareParts\Pillar\Mapper\Annotation as Pillar;
 
 /**
  * --@Entity\Storage(type="mysql")
- * @Pillar\Table(name="products", baseTable=true)
+ * @Pillar\Table(name="products")
  * @Pillar\Table(name="images", identifier="img", code="LEFT JOIN `images` `img` ON `img`.`id` = `products`.`image_id`")
  *
  * --@Entity\Cache(tags={"product", "product:$id"})
@@ -35,7 +35,7 @@ class GridProduct extends Entity implements IEntity
 
 	/**
 	 * @var string
-	 * @Pillar\Column(table="img")
+	 * @Pillar\Column(table="img", name="path")
 	 */
 	protected $image;
 
