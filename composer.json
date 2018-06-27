@@ -5,7 +5,7 @@
   "license":     "MIT",
   "require": {
     "php":  ">=5.6.0",
-    "dibi/dibi": "~2",
+    "dibi/dibi": "~3",
     "spareparts/enum": "~0",
     "doctrine/annotations": "~1"
   },

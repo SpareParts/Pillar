@@ -91,7 +91,7 @@ class DibiEntityAssistant
 	 *
 	 * @throws EntityMappingException
 	 * @throws UnableToSaveException
-	 * @throws \DibiException
+	 * @throws \Dibi\Exception
 	 * @throws \InvalidArgumentException
 	 */
 	public function update(IEntity $entity, array $tables = null)
@@ -131,7 +131,7 @@ class DibiEntityAssistant
 	 *
 	 * @throws UnableToSaveException
 	 * @throws \InvalidArgumentException
-	 * @throws \DibiException
+	 * @throws \Dibi\Exception
 	 */
 	public function insert(IEntity $entity, $tableName)
 	{
@@ -151,7 +151,7 @@ class DibiEntityAssistant
 
 		try {
 			return $fluent->execute(\dibi::IDENTIFIER);
-		} catch (\DibiException $exception) {
+		} catch (\Dibi\Exception $exception) {
 			// let's assume this is because the PK wasn't AUTO_INCREMENT...
 			// *waiting for pull request with better way to do this :)*
 			if ($exception->getMessage() !== 'Cannot retrieve last generated ID.') {
@@ -169,7 +169,7 @@ class DibiEntityAssistant
 	 * @param $tableName
 	 *
 	 * @return int|string|null
-	 * @throws \DibiException
+	 * @throws \Dibi\Exception
 	 * @internal param \string[] $tables
 	 */
 	public function insertOrUpdate(IEntity $entity, $tableName)
@@ -195,7 +195,7 @@ class DibiEntityAssistant
 
 		try {
 			return $fluent->execute(\dibi::IDENTIFIER);
-		} catch (\DibiException $exception) {
+		} catch (\Dibi\Exception $exception) {
 			// let's assume this is because the PK wasn't AUTO_INCREMENT...
 			// *waiting for pull request with better way to do this :)*
 			if ($exception->getMessage() !== 'Cannot retrieve last generated ID.') {
@@ -213,7 +213,7 @@ class DibiEntityAssistant
 	 *
 	 * @throws EntityMappingException
 	 * @throws UnableToSaveException
-	 * @throws \DibiException
+	 * @throws \Dibi\Exception
 	 */
 	public function delete(IEntity $entity, $tableName)
 	{
@@ -241,13 +241,13 @@ class DibiEntityAssistant
 	 * @param IEntity $entity
 	 * @param string $tableName
 	 * @param ColumnInfo[] $columns
-	 * @param \DibiFluent $fluent
+	 * @param \Dibi\Fluent $fluent
 	 *
-	 * @return \DibiFluent
+	 * @return \Dibi\Fluent
 	 *
 	 * @throws UnableToSaveException
 	 */
-	private function addPKToFluent(IEntity $entity, $tableName, $columns, \DibiFluent $fluent)
+	private function addPKToFluent(IEntity $entity, $tableName, $columns, \Dibi\Fluent $fluent)
 	{
 		/** @var ColumnInfo[] $pkColumns */
 		$pkColumns = array_filter($columns, function (ColumnInfo $columnInfo) {
