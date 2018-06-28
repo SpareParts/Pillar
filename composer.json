@@ -1,5 +1,5 @@
 {
-  "name":        "spareparts/pillar",
+  "name":        "nubium/pillar",
   "description": "Yet another take on ORM. This time with both hookers AND blackjack.",
   "keywords":    ["orm", "model", "entity", "mysql", "database", "persistence"],
   "license":     "MIT",
