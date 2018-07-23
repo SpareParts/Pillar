@@ -23,7 +23,7 @@
 //		$reader = new AnnotationReader();
 //		$mapper = new AnnotationMapper($reader);
 //
-//		$connection = new \DibiConnection([
+//		$connection = new \Dibi\Connection([
 //			'username' => 'ulozto_rw',
 //			'password' => 'D6b6WJUf7W',
 //			'host' => 'mysqlmaster.ulozto',

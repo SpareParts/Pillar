@@ -23,7 +23,7 @@ class DibiEntityAssistantFluentTest extends MockeryTestCase
 	/** @var DibiEntityAssistant */
 	protected $entityAssistant;
 
-	/** @var \DibiConnection */
+	/** @var \Dibi\Connection */
 	protected $connection;
 
 	public function setUp()
@@ -34,7 +34,7 @@ class DibiEntityAssistantFluentTest extends MockeryTestCase
 
 		$mapper = new AnnotationMapper(new AnnotationReader());
 		$entityFactory = new EntityFactory();
-		$this->connection = new \DibiConnection([
+		$this->connection = new \Dibi\Connection([
 			'host' => '127.0.0.1',
 			'username' => 'travis',
 			'password' => '',
@@ -126,7 +126,7 @@ class DibiEntityAssistantFluentTest extends MockeryTestCase
 
 
 	/**
-	 * @throws \DibiException
+	 * @throws \Dibi\Exception
 	 * @test
 	 */
 	public function insertCanCreateNewRow()

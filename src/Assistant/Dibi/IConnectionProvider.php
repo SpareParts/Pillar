@@ -5,7 +5,7 @@ namespace SpareParts\Pillar\Assistant\Dibi;
 interface IConnectionProvider
 {
 	/**
-	 * @return \DibiConnection
+	 * @return \Dibi\Connection
 	 */
 	public function getConnection();
 }
