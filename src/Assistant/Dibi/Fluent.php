@@ -8,7 +8,7 @@ use SpareParts\Pillar\Mapper\Dibi\ColumnInfo;
 use SpareParts\Pillar\Mapper\Dibi\IEntityMapping;
 use SpareParts\Pillar\Mapper\Dibi\TableInfo;
 
-class Fluent extends \DibiFluent
+class Fluent extends \Dibi\Fluent
 {
 	/**
 	 * @var IEntityMapping
@@ -20,7 +20,7 @@ class Fluent extends \DibiFluent
 	 */
 	protected $entityFactory;
 
-	public function __construct(\DibiConnection $connection, IEntityMapping $entityMapping, IEntityFactory $entityFactory = null)
+	public function __construct(\Dibi\Connection $connection, IEntityMapping $entityMapping, IEntityFactory $entityFactory = null)
 	{
 		parent::__construct($connection);
 		if ($entityFactory) {

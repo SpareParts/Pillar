@@ -6,11 +6,11 @@ use SpareParts\Pillar\Assistant\Dibi\IConnectionProvider;
 class DibiConnectionProvider implements IConnectionProvider
 {
 	/**
-	 * @var \DibiConnection
+	 * @var \Dibi\Connection
 	 */
 	private $connection;
 
-	public function __construct(\DibiConnection $connection)
+	public function __construct(\Dibi\Connection $connection)
 	{
 		$this->connection = $connection;
 	}
